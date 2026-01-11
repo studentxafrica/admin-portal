@@ -291,7 +291,7 @@ const StudentReviewModal: React.FC<{
 											{verificationData.student?.dateOfBirth && (
 												<div className="flex items-center gap-2">
 													<div className="w-24 text-sm font-medium text-gray-600">DOB:</div>
-													<div>{new Date(verificationData.student?.dateOfBirth).toLocaleDateString()}</div>
+													<div>{new Date(verificationData.student?.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
 												</div>
 											)}
 										</div>
