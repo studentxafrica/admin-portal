@@ -6,6 +6,7 @@ import { UserManagement } from "../components/UserManagement";
 import { OfferManagement } from "../components/OfferManagement";
 import { Analytics } from "../components/Analytics";
 import { PlatformSettings } from "../components/PlatformSettings";
+import { StudentBusinessApplications } from "../components/StudentBusinessApplications";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { useSelector } from "react-redux";
@@ -31,6 +32,7 @@ const Index = () => {
             <Route path="/" element={<DashboardOverview />} />
             <Route path="/offers" element={<OfferManagement />} />
             <Route path="/users" element={<UserManagement />} />
+            <Route path="/applications" element={<StudentBusinessApplications />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<PlatformSettings />} />
             <Route path="*" element={<DashboardOverview />} />
