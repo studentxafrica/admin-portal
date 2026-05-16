@@ -56,7 +56,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: "./admin.studentx.co.ke/"
+          server-dir: "./public_html/admin.studentx.co.ke/"
           exclude: |
             **/.DS_Store
             **/Thumbs.db
