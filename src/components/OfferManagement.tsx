@@ -29,8 +29,11 @@ import {
   XCircle,
   AlertTriangle,
   Play,
-  Pause
+  Pause,
+  Video,
+  Link2
 } from "lucide-react";
+import { OfferKind } from "@/types/offer";
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "@/api/axios";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
@@ -224,7 +227,7 @@ export function OfferManagement() {
   });
 
   const filteredCoupons = couponsData.filter(coupon =>
-    (coupon.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ((coupon.code || coupon.eventUrl || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       coupon.offer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       coupon.student.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (activeTab === "coupons" && (statusFilter === "all" || coupon.status === statusFilter))
@@ -243,16 +246,6 @@ export function OfferManagement() {
   // const handleCreateOffer = (newOffer: any) => {
   //   setOffers(prev => [newOffer, ...prev]);
   // };
-
-  const handleEditOffer = (updatedOffer: any) => {
-    setOffers(prev => prev.map(offer =>
-      offer.id === updatedOffer.id ? updatedOffer : offer
-    ));
-    toast({
-      title: "Offer Updated",
-      description: `"${updatedOffer.title}" has been successfully updated.`,
-    });
-  };
 
   const handleViewOffer = (offer: any) => {
     setSelectedOffer(offer);
@@ -366,19 +359,13 @@ export function OfferManagement() {
           <h1 className="text-3xl font-bold text-gray-900">Offers & Coupons</h1>
           <p className="text-gray-600 mt-1">Manage all offers and track coupon redemptions</p>
         </div>
-        {/* <div className="flex gap-3">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Advanced Filters
-          </Button>
-          <Button
-            className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Create Offer
-          </Button>
-        </div> */}
+        <Button
+          className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+          onClick={() => setShowCreateModal(true)}
+        >
+          <Plus className="w-4 h-4" />
+          Create Offer
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -509,9 +496,17 @@ export function OfferManagement() {
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="font-semibold text-gray-900">{offer.title}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900">{offer.title}</h3>
+                              {offer.offerKind === OfferKind.EVENT && (
+                                <Badge className="bg-indigo-100 text-indigo-800 flex items-center gap-1">
+                                  <Video className="w-3 h-3" />
+                                  Event
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
-                              <span>{offer.merchant.name}</span>
+                              <span>{offer.merchant?.name}</span>
                               {offer.category?.name && (
                                 <>
                                   <span>•</span>
@@ -527,7 +522,19 @@ export function OfferManagement() {
 
                         <div className="flex items-center gap-6 mt-3 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
-                            {offer.discountType === "percentage" ? `${offer.discountValue}% off` :
+                            {offer.offerKind === OfferKind.EVENT ? (
+                              <a
+                                href={offer.eventUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-blue-600 hover:underline inline-flex items-center gap-1 max-w-[16rem]"
+                                title={offer.eventUrl}
+                              >
+                                <Link2 className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{offer.eventUrl}</span>
+                              </a>
+                            ) : offer.discountType === "percentage" ? `${offer.discountValue}% off` :
                               offer.discountType === "fixed_amount" ? (
                                 <>
                                   {sym(`${offer?.currency || 'USD'}`, window.navigator.language || 'en-US')} {offer.discountValue}
@@ -540,7 +547,7 @@ export function OfferManagement() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {offer.claimed}/{offer.couponLimit} claimed
+                            {offer.claimed}/{offer.couponLimit} {offer.offerKind === OfferKind.EVENT ? 'registered' : 'claimed'}
                           </span>
                           <span className="flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" />
@@ -565,12 +572,17 @@ export function OfferManagement() {
                         {/* <Button variant="ghost" size="sm" onClick={() => handleViewOffer(offer)}>
                           <Eye className="w-4 h-4" />
                         </Button> */}
-                        {/* <Button variant="ghost" size="sm" onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenEditModal(offer)
-                        }}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Edit offer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditModal(offer);
+                          }}
+                        >
                           <Edit className="w-4 h-4" />
-                        </Button> */}
+                        </Button>
                         {offer.status === 'active' ? (
                           <Button
                             disabled={deactivatingOffer}
@@ -662,9 +674,22 @@ export function OfferManagement() {
                     <div key={coupon.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          <code className="px-2 py-1 bg-gray-100 rounded text-sm font-mono">
-                            {coupon.code}
-                          </code>
+                          {coupon.offerKind === OfferKind.EVENT ? (
+                            <a
+                              href={coupon.eventUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2 py-1 bg-indigo-50 rounded text-sm text-indigo-700 hover:underline inline-flex items-center gap-1 max-w-[18rem]"
+                              title={coupon.eventUrl}
+                            >
+                              <Video className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{coupon.eventUrl}</span>
+                            </a>
+                          ) : (
+                            <code className="px-2 py-1 bg-gray-100 rounded text-sm font-mono">
+                              {coupon.code}
+                            </code>
+                          )}
                           <Badge className={getStatusColor(coupon.status)}>
                             {coupon.status}
                           </Badge>
@@ -725,7 +750,9 @@ export function OfferManagement() {
                               e.stopPropagation();
                               openModal({
                                 title: "Expire Coupon",
-                                message: `Are you sure you want to mark coupon "${coupon.code}" as expired?`,
+                                message: coupon.offerKind === OfferKind.EVENT
+                                  ? `Are you sure you want to cancel ${coupon.student}'s registration for "${coupon.offer}"?`
+                                  : `Are you sure you want to mark coupon "${coupon.code}" as expired?`,
                                 confirmText: "Expire",
                                 cancelText: "Cancel",
                                 variant: "destructive",
@@ -751,18 +778,18 @@ export function OfferManagement() {
       </Tabs>
 
       {/* Create Offer Modal */}
-      {/* <CreateOfferModal
+      <CreateOfferModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
-        onOfferCreated={handleCreateOffer}
-      /> */}
+        onOfferCreated={refetch}
+      />
 
       {/* Edit Offer Modal */}
       <EditOfferModal
         open={showEditModal}
         onOpenChange={setShowEditModal}
         offer={selectedOffer}
-        onOfferUpdated={handleEditOffer}
+        onOfferUpdated={refetch}
       />
 
       {/* Offer Details Modal */}
@@ -796,20 +823,43 @@ export function OfferManagement() {
               )}
 
               <div className="grid grid-cols-2 gap-4">
+                {selectedOffer.offerKind === OfferKind.EVENT ? (
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">Event Link</label>
+                    <a
+                      href={selectedOffer.eventUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 text-blue-600 hover:underline break-all inline-flex items-center gap-1"
+                    >
+                      <Link2 className="w-3 h-3 shrink-0" />
+                      {selectedOffer.eventUrl}
+                    </a>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Every student who registers receives this same link and QR code.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Discount</label>
+                    <p className="mt-1">
+                      {selectedOffer.discountType === "percentage" ? `${selectedOffer.discountValue}% off` :
+                        selectedOffer.discountType === "fixed_amount" ? `${selectedOffer.currency || ''} ${selectedOffer.discountValue} off` :
+                          selectedOffer.discountType === "free_item" ? "Free item" :
+                            "Buy One Get One Free"}
+                    </p>
+                  </div>
+                )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Discount</label>
-                  <p className="mt-1">
-                    {selectedOffer.discountType === "percentage" ? `${selectedOffer.discountValue}% off` :
-                      selectedOffer.discountType === "fixed_amount" ? `$${selectedOffer.discountValue} off` :
-                        "Buy One Get One Free"}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Coupon Limit</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    {selectedOffer.offerKind === OfferKind.EVENT ? 'Registration Limit' : 'Coupon Limit'}
+                  </label>
                   <p className="mt-1">{selectedOffer.couponLimit}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Claimed</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    {selectedOffer.offerKind === OfferKind.EVENT ? 'Registered' : 'Claimed'}
+                  </label>
                   <p className="mt-1">{selectedOffer.claimed}</p>
                 </div>
                 <div>
@@ -835,14 +885,17 @@ export function OfferManagement() {
               </div>
 
               <div className="flex gap-3 pt-4 border-t">
-                {/* <Button
+                <Button
                   variant="outline"
-                  onClick={() => handleOpenEditModal(selectedOffer)}
+                  onClick={() => {
+                    setShowOfferModal(false);
+                    handleOpenEditModal(selectedOffer);
+                  }}
                   className="flex items-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
-                  Edit Offer
-                </Button> */}
+                  {selectedOffer.offerKind === OfferKind.EVENT ? 'Edit Event' : 'Edit Offer'}
+                </Button>
                 {selectedOffer.status === 'active' ? (
                   <Button
                     variant="outline"
