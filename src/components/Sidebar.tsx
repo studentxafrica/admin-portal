@@ -48,6 +48,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: SidebarProps) => {
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'applications', label: 'Business Applications', icon: BriefcaseBusiness },
     { id: 'offers', label: 'Offers & Coupons', icon: Gift },
+    { id: 'drops', label: 'StudentXmas', icon: Ticket },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
