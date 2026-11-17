@@ -16,7 +16,7 @@ interface DropRun { ranAt: string; eligible: number; picked: number; shortfall: 
 interface AdminDrop {
   id: string; number: number; title: string; brand: string; description: string | null; coverImage: string | null;
   kind: "airtime" | "voucher" | "crew"; quantity: number; crewSize: number | null; pickAt: string;
-  status: "upcoming" | "picked"; overdue: boolean; venuePinSet: boolean; run: DropRun | null;
+  status: "upcoming" | "picked"; readyToPick: boolean; venuePinSet: boolean; run: DropRun | null;
 }
 interface Recipient {
   id: string; dropId: string; drop: string; kind: string; name: string; email: string; phone: string | null;
@@ -98,7 +98,7 @@ export const DropsManagement = () => {
   };
 
   if (!overview) return <p className="text-gray-500">Loading StudentXmas…</p>;
-  const overdue = overview.drops.filter((d) => d.overdue);
+  const ready = overview.drops.filter((d) => d.readyToPick);
   const needsPin = overview.drops.filter((d) => d.kind !== "airtime" && !d.venuePinSet && d.status === "upcoming");
   const airtimeToSend = recipients.filter((r) => r.kind === "airtime" && r.fulfilment === "pending");
 
@@ -106,7 +106,7 @@ export const DropsManagement = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{overview.campaign.name}</h1>
-        <p className="text-gray-500">{day(overview.campaign.startsAt)} – {day(overview.campaign.endsAt)} · drops are picked at random at their pick time</p>
+        <p className="text-gray-500">{day(overview.campaign.startsAt)} – {day(overview.campaign.endsAt)} · pick each drop's winners here once its pick time comes; they're chosen at random</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -116,11 +116,11 @@ export const DropsManagement = () => {
         <Card><CardContent className="p-5"><p className="text-sm text-gray-500">Drops picked</p><p className="text-2xl font-bold">{overview.drops.filter((d) => d.status === "picked").length} of {overview.drops.length}</p></CardContent></Card>
       </div>
 
-      {(overdue.length > 0 || needsPin.length > 0) && (
+      {(ready.length > 0 || needsPin.length > 0) && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="space-y-1 p-5 text-sm text-amber-900">
             <p className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />Needs attention</p>
-            {overdue.map((d) => <p key={d.id}>{d.title} ({when(d.pickAt)}) should have been picked. Use "Pick now".</p>)}
+            {ready.map((d) => <p key={d.id}>{d.title} ({when(d.pickAt)}) is ready to pick. Use "Pick winners".</p>)}
             {needsPin.map((d) => <p key={d.id}>{d.title} has no venue PIN yet; the venue can't mark passes as used.</p>)}
           </CardContent>
         </Card>
@@ -146,13 +146,13 @@ export const DropsManagement = () => {
                     )}
                   </div>
                   {drop.status === "picked" ? <Badge variant="secondary">Picked</Badge>
-                    : drop.overdue ? <Badge className="bg-amber-500">Overdue</Badge>
+                    : drop.readyToPick ? <Badge className="bg-amber-500">Ready to pick</Badge>
                     : <Badge variant="outline">Upcoming</Badge>}
                   {drop.kind !== "airtime" && (
                     <Badge variant={drop.venuePinSet ? "secondary" : "outline"}>{drop.venuePinSet ? "Venue PIN set" : "No venue PIN"}</Badge>
                   )}
                   {drop.status === "upcoming" && new Date(drop.pickAt) <= new Date() && (
-                    <Button size="sm" onClick={() => pickNow(drop)} disabled={busy === `pick-${drop.id}`}><Shuffle className="mr-1 h-4 w-4" />Pick now</Button>
+                    <Button size="sm" onClick={() => pickNow(drop)} disabled={busy === `pick-${drop.id}`}><Shuffle className="mr-1 h-4 w-4" />Pick winners</Button>
                   )}
                   {drop.kind !== "airtime" && (
                     <Button size="sm" variant="outline" onClick={() => { setPin(""); setPinFor(drop); }}><KeyRound className="mr-1 h-4 w-4" />Venue PIN</Button>
