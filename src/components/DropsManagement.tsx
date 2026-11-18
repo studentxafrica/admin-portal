@@ -15,6 +15,7 @@ const CAMPAIGN = "studentxmas";
 interface DropRun { ranAt: string; eligible: number; picked: number; shortfall: number; triggeredBy: string }
 interface AdminDrop {
   id: string; number: number; title: string; brand: string; description: string | null; coverImage: string | null;
+  badge: string | null; subtext: string | null;
   kind: "airtime" | "voucher" | "crew"; quantity: number; crewSize: number | null; pickAt: string;
   status: "upcoming" | "picked"; readyToPick: boolean; venuePinSet: boolean; run: DropRun | null;
 }
@@ -45,7 +46,7 @@ export const DropsManagement = () => {
   const [pinFor, setPinFor] = useState<AdminDrop | null>(null);
   const [pin, setPin] = useState("");
   const [editing, setEditing] = useState<AdminDrop | null>(null);
-  const [form, setForm] = useState({ title: "", brand: "", description: "", coverImage: "" });
+  const [form, setForm] = useState({ title: "", brand: "", badge: "", subtext: "", description: "", coverImage: "" });
 
   const load = useCallback(async () => {
     try {
@@ -87,7 +88,7 @@ export const DropsManagement = () => {
     act("edit", () => axiosInstance.put(`/drops/admin/drops/${editing.id}`, form), "Drop updated", () => setEditing(null));
 
   const startEdit = (drop: AdminDrop) => {
-    setForm({ title: drop.title, brand: drop.brand, description: drop.description ?? "", coverImage: drop.coverImage ?? "" });
+    setForm({ title: drop.title, brand: drop.brand, badge: drop.badge ?? "", subtext: drop.subtext ?? "", description: drop.description ?? "", coverImage: drop.coverImage ?? "" });
     setEditing(drop);
   };
   const pickPhoto = (file?: File) => {
@@ -222,9 +223,11 @@ export const DropsManagement = () => {
           <div className="space-y-4">
             <div className="space-y-1.5"><Label htmlFor="drop-title">Title</Label><Input id="drop-title" value={form.title} maxLength={128} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
             <div className="space-y-1.5"><Label htmlFor="drop-brand">Brand or venue</Label><Input id="drop-brand" value={form.brand} maxLength={128} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label htmlFor="drop-description">Description</Label><Textarea id="drop-description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label htmlFor="drop-badge">Card badge</Label><Input id="drop-badge" value={form.badge} maxLength={64} placeholder="DROPS NOV 25" onChange={(e) => setForm({ ...form, badge: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label htmlFor="drop-subtext">Line under the title</Label><Input id="drop-subtext" value={form.subtext} maxLength={128} placeholder="1 Voucher • City Eats" onChange={(e) => setForm({ ...form, subtext: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label htmlFor="drop-description">Details</Label><Textarea id="drop-description" rows={8} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             <div className="space-y-1.5">
-              <Label htmlFor="drop-photo">Photo of the perk</Label>
+              <Label htmlFor="drop-photo">Photo of the reward</Label>
               {form.coverImage && <img src={form.coverImage} alt="" className="h-28 w-full rounded-md object-cover" />}
               <Input id="drop-photo" type="file" accept="image/*" onChange={(e) => pickPhoto(e.target.files?.[0])} />
               {form.coverImage && <Button type="button" variant="ghost" size="sm" onClick={() => setForm({ ...form, coverImage: "" })}>Remove photo</Button>}
