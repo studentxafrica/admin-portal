@@ -16,12 +16,13 @@ interface DropRun { ranAt: string; eligible: number; picked: number; shortfall: 
 interface AdminDrop {
   id: string; number: number; title: string; brand: string; description: string | null; coverImage: string | null;
   kind: "airtime" | "voucher" | "crew"; quantity: number; crewSize: number | null; pickAt: string;
-  status: "upcoming" | "picked"; readyToPick: boolean; venuePinSet: boolean; run: DropRun | null;
+  status: "upcoming" | "picked"; readyToPick: boolean; approvalStatus: "not_picked" | "pending" | "approved";
+  venuePinSet: boolean; run: DropRun | null;
 }
 interface Recipient {
   id: string; dropId: string; drop: string; kind: string; name: string; email: string; phone: string | null;
   reference: string; fulfilment: "pending" | "sent" | "redeemed"; crew: string[]; crewComplete: boolean;
-  expiresAt: string; redeemedAt: string | null;
+  expiresAt: string; redeemedAt: string | null; approved: boolean;
 }
 interface Overview {
   campaign: { name: string; startsAt: string; endsAt: string };
@@ -77,7 +78,9 @@ export const DropsManagement = () => {
   };
 
   const pickNow = (drop: AdminDrop) =>
-    act(`pick-${drop.id}`, () => axiosInstance.post(`/drops/admin/drops/${drop.id}/pick`), `${drop.title} picked`);
+    act(`pick-${drop.id}`, () => axiosInstance.post(`/drops/admin/drops/${drop.id}/pick`), `${drop.title} winners selected`);
+  const approveWinners = (drop: AdminDrop) =>
+    act(`approve-${drop.id}`, () => axiosInstance.post(`/drops/admin/drops/${drop.id}/approve`), `${drop.title} winners approved and notified`);
   const markSent = (r: Recipient) =>
     act(`sent-${r.id}`, () => axiosInstance.post(`/drops/admin/picks/${r.id}/fulfilment`, { status: "sent" }), `Marked as sent to ${r.name}`);
   const savePin = () => pinFor &&
@@ -99,6 +102,7 @@ export const DropsManagement = () => {
 
   if (!overview) return <p className="text-gray-500">Loading StudentXmas…</p>;
   const ready = overview.drops.filter((d) => d.readyToPick);
+  const awaitingApproval = overview.drops.filter((d) => d.approvalStatus === "pending");
   const needsPin = overview.drops.filter((d) => d.kind !== "airtime" && !d.venuePinSet && d.status === "upcoming");
   const airtimeToSend = recipients.filter((r) => r.kind === "airtime" && r.fulfilment === "pending");
 
@@ -106,7 +110,7 @@ export const DropsManagement = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{overview.campaign.name}</h1>
-        <p className="text-gray-500">{day(overview.campaign.startsAt)} – {day(overview.campaign.endsAt)} · pick each drop's winners here once its pick time comes; they're chosen at random</p>
+        <p className="text-gray-500">{day(overview.campaign.startsAt)} – {day(overview.campaign.endsAt)} · selected winners are announced after an admin approves them</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -116,11 +120,12 @@ export const DropsManagement = () => {
         <Card><CardContent className="p-5"><p className="text-sm text-gray-500">Drops picked</p><p className="text-2xl font-bold">{overview.drops.filter((d) => d.status === "picked").length} of {overview.drops.length}</p></CardContent></Card>
       </div>
 
-      {(ready.length > 0 || needsPin.length > 0) && (
+      {(ready.length > 0 || awaitingApproval.length > 0 || needsPin.length > 0) && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="space-y-1 p-5 text-sm text-amber-900">
             <p className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />Needs attention</p>
             {ready.map((d) => <p key={d.id}>{d.title} ({when(d.pickAt)}) is ready to pick. Use "Pick winners".</p>)}
+            {awaitingApproval.map((d) => <p key={d.id}>{d.title} has {d.run?.picked ?? 0} selected winners. Review the list and approve them to notify students.</p>)}
             {needsPin.map((d) => <p key={d.id}>{d.title} has no venue PIN yet; the venue can't mark passes as used.</p>)}
           </CardContent>
         </Card>
@@ -145,7 +150,8 @@ export const DropsManagement = () => {
                       </p>
                     )}
                   </div>
-                  {drop.status === "picked" ? <Badge variant="secondary">Picked</Badge>
+                  {drop.approvalStatus === "approved" ? <Badge variant="secondary">Winners approved</Badge>
+                    : drop.approvalStatus === "pending" ? <Badge className="bg-amber-500">Approval needed</Badge>
                     : drop.readyToPick ? <Badge className="bg-amber-500">Ready to pick</Badge>
                     : <Badge variant="outline">Upcoming</Badge>}
                   {drop.kind !== "airtime" && (
@@ -154,13 +160,16 @@ export const DropsManagement = () => {
                   {drop.status === "upcoming" && new Date(drop.pickAt) <= new Date() && (
                     <Button size="sm" onClick={() => pickNow(drop)} disabled={busy === `pick-${drop.id}`}><Shuffle className="mr-1 h-4 w-4" />Pick winners</Button>
                   )}
+                  {drop.approvalStatus === "pending" && (
+                    <Button size="sm" onClick={() => approveWinners(drop)} disabled={busy === `approve-${drop.id}`}>Approve winners</Button>
+                  )}
                   {drop.kind !== "airtime" && (
                     <Button size="sm" variant="outline" onClick={() => { setPin(""); setPinFor(drop); }}><KeyRound className="mr-1 h-4 w-4" />Venue PIN</Button>
                   )}
                   <Button size="sm" variant="outline" onClick={() => startEdit(drop)}><Pencil className="mr-1 h-4 w-4" />Edit</Button>
                   {people.length > 0 && (
                     <Button size="sm" variant="ghost" onClick={() => setOpen(expanded ? null : drop.id)} aria-expanded={expanded}>
-                      {people.length} picked {expanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
+                      {people.length} {drop.approvalStatus === "approved" ? "winners" : "selected"} {expanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
                     </Button>
                   )}
                 </div>
@@ -178,12 +187,12 @@ export const DropsManagement = () => {
                             <td className="pr-4">{r.email}</td>
                             <td className="pr-4 font-mono">{r.reference}</td>
                             <td className="pr-4">
-                              {r.kind === "airtime"
+                              {!r.approved ? "Awaiting approval" : r.kind === "airtime"
                                 ? (r.fulfilment === "pending" ? "Airtime to send" : "Airtime sent")
                                 : r.redeemedAt ? `Used ${day(r.redeemedAt)}` : `Use by ${day(r.expiresAt)}`}
                             </td>
                             <td className="text-right">
-                              {r.kind === "airtime" && r.fulfilment === "pending" && (
+                              {r.approved && r.kind === "airtime" && r.fulfilment === "pending" && (
                                 <Button size="sm" onClick={() => markSent(r)} disabled={busy === `sent-${r.id}`}>Mark airtime sent</Button>
                               )}
                             </td>
